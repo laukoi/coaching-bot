@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Coaching</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0e;
+    --surface: #1a1a18;
+    --border: #2a2a27;
+    --accent: #c8b89a;
+    --accent-dim: #7a6e5f;
+    --text: #e8e4de;
+    --text-dim: #7a776f;
+    --user-bg: #1f1e1c;
+    --coach-bg: #171715;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .header-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  .header-sub {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+
+
+
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scroll-behavior: smooth;
+  }
+
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .message {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    animation: fadeUp 0.3s ease;
+    max-width: 720px;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { align-self: flex-end; align-items: flex-end; }
+  .message.assistant { align-self: flex-start; align-items: flex-start; }
+
+  .message-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 4px;
+  }
+
+  .message-bubble {
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.65;
+    max-width: 600px;
+  }
+
+  .message.user .message-bubble {
+    background: var(--user-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.assistant .message-bubble {
+    background: var(--coach-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+    border-left: 2px solid var(--accent-dim);
+  }
+
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 16px 18px;
+    background: var(--coach-bg);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent-dim);
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  #input-area {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  #user-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    min-height: 48px;
+    max-height: 160px;
+    overflow-y: auto;
+    transition: border-color 0.2s;
+  }
+
+  #user-input:focus { border-color: var(--accent-dim); }
+  #user-input::placeholder { color: var(--text-dim); }
+
+  #send-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  #send-btn:hover { opacity: 0.85; }
+  #send-btn:active { transform: scale(0.95); }
+  #send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  #send-btn svg { color: var(--bg); }
+
+  #reset-btn {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+    align-self: center;
+  }
+
+  #reset-btn:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 40px;
+  }
+
+  .empty-icon {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px;
+    color: var(--border);
+    line-height: 1;
+  }
+
+  .empty-state p {
+    font-size: 14px;
+    max-width: 280px;
+    line-height: 1.6;
+  }
+
+
+  #make-sense-btn {
+    height: 48px;
+    border-radius: 10px;
+    background: none;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 0 16px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  #make-sense-btn:hover { background: rgba(200,184,154,0.08); }
+  #make-sense-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .message-bubble p { margin-bottom: 0.6em; }
+  .message-bubble p:last-child { margin-bottom: 0; }
+  .message-bubble strong { color: var(--accent); font-weight: 500; }
+  .message-bubble ul { padding-left: 1.2em; margin-bottom: 0.6em; }
+  .message-bubble li { margin-bottom: 0.3em; }
+
+
+  .option-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    align-self: flex-start;
+    max-width: 420px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .option-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    line-height: 1.4;
+  }
+
+  .option-btn:hover {
+    border-color: var(--accent-dim);
+    background: rgba(200,184,154,0.06);
+    color: var(--accent);
+  }
+
+  .error-msg {
+    font-size: 13px;
+    color: #c47b7b;
+    padding: 10px 14px;
+    background: rgba(196, 123, 123, 0.08);
+    border: 1px solid rgba(196, 123, 123, 0.2);
+    border-radius: 8px;
+    align-self: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-dot"></div>
+  <span class="header-title">Coaching Session</span>
+  <span class="header-sub">AI · Prototype</span>
+</header>
+
+
+<div id="messages">
+  <div class="empty-state" id="empty-state">
+    <div class="empty-icon">◎</div>
+    <p>Click below and start typing. The coach will guide you from there.</p>
+  </div>
+</div>
+
+<div id="input-area">
+  <textarea id="user-input" placeholder="Type your message..." rows="1"></textarea>
+  <button id="make-sense-btn" onclick="makeSense()">Make sense</button>
+  <button id="send-btn" onclick="sendMessage()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"></line>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+    </svg>
+  </button>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `You are a professional coach. Your role is to help the user explore their situation using evidence-based coaching approaches.
+
+Step 1 — Always start with this question:
+"Describe the situation or issue you want to work on."
+
+After the user answers, the UI will automatically ask "What would make this conversation useful for you?" with preset options. Wait for their selection before proceeding to Step 2.
+
+Step 2 — Diagnose silently using these signals:
+- Mentions another person or relationship conflict → consider Relational
+- Future-focused, stuck, needs clarity on next steps → consider Action-focused
+- Repetitive pattern, blind spot, limiting belief → consider Assumption-challenging
+- Emotional language, overwhelm, fear, grief → consider Emotional/somatic
+- "Who am I / what do I want / does this matter" → consider Meaning/identity
+- Physical exhaustion, burnout, can't think straight → prioritize Somatic/regulation first
+
+Step 3 — Recommend 2-3 approaches using outcome-oriented language. Use this exact format:
+
+"Based on what you've shared, here are a few ways we could work on this:
+
+• [Approach A] — [one sentence on what this would do for them]
+• [Approach B] — [one sentence on what this would do for them]
+• [Approach C] — [one sentence on what this would do for them]
+
+Which feels most useful right now — or does none of these quite fit?"
+
+Use these descriptions, never modality names:
+- "Slow down and understand what you're actually feeling"
+- "Cut through the noise and find your next move"
+- "Examine the beliefs that might be keeping you stuck"
+- "Explore the dynamics between you and the other person"
+- "Get clarity on what actually matters to you here"
+- "Settle your nervous system before we go deeper"
+
+Step 4 — Once they choose, adopt that coaching lens. Stay with it unless the user asks to switch. When in doubt, stay in exploration — never move to closing prematurely.
+
+Step 5 — Closing. Only trigger when the coachee explicitly states an insight or realization:
+1. Acknowledge the insight briefly
+2. Ask: "What does this mean for what you'll do next?"
+3. Help form 1-3 concrete next steps
+4. Ask: "Is there anything else you feel is important to talk about right now?"
+5. Close warmly
+
+Ground rules:
+- Ask one question at a time
+- Never give advice unless explicitly asked
+- Reflect, challenge, and open new perspectives
+- Keep responses concise`;
+
+let conversationHistory = [];
+let isLoading = false;
+
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const emptyState = document.getElementById('empty-state');
+
+// Auto-start session on load
+window.addEventListener('load', () => setTimeout(autoStart, 400));
+
+
+const ANALYSIS_PROMPT = `You are a professional coach switching into analytical mode. Based on the conversation so far, provide a structured analysis using exactly this format — keep each section to 2-3 short sentences maximum:
+
+**Where you are**
+[A clear, direct read of the coachee's current situation and emotional state]
+
+**What's driving this**
+[The key patterns, beliefs, or dynamics underneath the surface]
+
+**What I'd suggest**
+[2-3 concrete, specific recommendations — be direct and actionable]
+
+Be concise. No preamble. No closing remarks. Just the three sections.`;
+
+async function makeSense() {
+  if (isLoading || conversationHistory.length < 2) {
+    showError('Have a conversation first — then ask me to make sense of it.');
+    return;
+  }
+  isLoading = true;
+  sendBtn.disabled = true;
+  document.getElementById('make-sense-btn').disabled = true;
+
+  addMessage('user', 'Make sense of this for me.');
+  conversationHistory.push({ role: 'user', content: 'Make sense of this for me.' });
+
+  showTyping();
+  try {
+    const response = await fetch('https://personality-proxy.lauri-38c.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: ANALYSIS_PROMPT,
+        messages: conversationHistory
+      })
+    });
+    const data = await response.json();
+    const reply = data.content?.[0]?.text || '';
+    removeTyping();
+    addMessage('assistant', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    removeTyping();
+    showError('Something went wrong. Try again.');
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    document.getElementById('make-sense-btn').disabled = false;
+  }
+}
+
+
+const OUTCOME_OPTIONS = [
+  'Work on how I feel about this',
+  'Get clarity and more understanding',
+  'Get clear next steps on what to do',
+  'Challenge my thinking and assumptions',
+  'Just be heard and think out loud'
+];
+
+function showOutcomeOptions() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'option-buttons';
+  wrapper.id = 'outcome-options';
+
+  OUTCOME_OPTIONS.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt;
+    btn.onclick = () => selectOutcome(opt);
+    wrapper.appendChild(btn);
+  });
+
+  messagesEl.appendChild(wrapper);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function selectOutcome(option) {
+  // Remove buttons
+  const el = document.getElementById('outcome-options');
+  if (el) el.remove();
+
+  // Send as user message
+  addMessage('user', option);
+  conversationHistory.push({ role: 'user', content: option });
+
+  // Continue coaching
+  continueSession();
+}
+
+async function continueSession() {
+  isLoading = true;
+  sendBtn.disabled = true;
+  document.getElementById('make-sense-btn').disabled = true;
+  showTyping();
+
+  try {
+    const response = await fetch('https://personality-proxy.lauri-38c.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: conversationHistory
+      })
+    });
+    const data = await response.json();
+    if (data.error) { removeTyping(); showError(data.error.message); return; }
+    const reply = data.content?.[0]?.text || '';
+    removeTyping();
+    addMessage('assistant', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+  } catch (err) {
+    removeTyping();
+    showError('Something went wrong. Try again.');
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    document.getElementById('make-sense-btn').disabled = false;
+    inputEl.focus();
+  }
+}
+
+async function autoStart() {
+  isLoading = true;
+  sendBtn.disabled = true;
+  showTyping();
+  try {
+    const response = await fetch('https://personality-proxy.lauri-38c.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: 'Start the session by asking your first question.' }]
+      })
+    });
+    const data = await response.json();
+    const opening = data.content?.[0]?.text || '';
+    removeTyping();
+    const el = document.getElementById('empty-state');
+    if (el) el.remove();
+    addMessage('assistant', opening);
+    conversationHistory.push({ role: 'user', content: 'Start the session by asking your first question.' });
+    conversationHistory.push({ role: 'assistant', content: opening });
+  } catch (err) {
+    removeTyping();
+    showError('Could not connect. Try refreshing.');
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+// Auto-resize textarea
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+
+function addMessage(role, text) {
+  if (emptyState) emptyState.remove();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `message ${role}`;
+
+  const label = document.createElement('div');
+  label.className = 'message-label';
+  label.textContent = role === 'user' ? 'You' : 'Coach';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  bubble.innerHTML = marked.parse(text);
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(bubble);
+  messagesEl.appendChild(wrapper);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return wrapper;
+}
+
+function showTyping() {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'message assistant';
+  wrapper.id = 'typing';
+
+  const label = document.createElement('div');
+  label.className = 'message-label';
+  label.textContent = 'Coach';
+
+  const indicator = document.createElement('div');
+  indicator.className = 'typing-indicator';
+  indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(indicator);
+  messagesEl.appendChild(wrapper);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById('typing');
+  if (t) t.remove();
+}
+
+function showError(msg) {
+  const el = document.createElement('div');
+  el.className = 'error-msg';
+  el.textContent = msg;
+  messagesEl.appendChild(el);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  setTimeout(() => el.remove(), 5000);
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || isLoading) return;
+
+  // First message — start session with greeting
+  if (conversationHistory.length === 0) {
+    await startSession(text);
+    return;
+  }
+
+  isLoading = true;
+  sendBtn.disabled = true;
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+
+  addMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+
+  showTyping();
+
+  try {
+    const response = await fetch('https://personality-proxy.lauri-38c.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: conversationHistory
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) { removeTyping(); showError(data.error.message); return; }
+
+    const reply = data.content?.[0]?.text || '';
+    removeTyping();
+    addMessage('assistant', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+
+  } catch (err) {
+    removeTyping();
+    showError('Something went wrong. Try again.');
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+async function startSession(firstMessage) {
+  isLoading = true;
+  sendBtn.disabled = true;
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+
+  // Kick off with just the system prompt — AI asks first question
+  showTyping();
+
+  try {
+    const response = await fetch('https://personality-proxy.lauri-38c.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: 'Start the session.' }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) { removeTyping(); showError(data.error.message); return; }
+
+    const opening = data.content?.[0]?.text || '';
+    removeTyping();
+    addMessage('assistant', opening);
+    conversationHistory.push({ role: 'user', content: 'Start the session.' });
+    conversationHistory.push({ role: 'assistant', content: opening });
+
+    // Now send the user's actual first message
+    addMessage('user', firstMessage);
+    conversationHistory.push({ role: 'user', content: firstMessage });
+
+    showTyping();
+
+    const response2 = await fetch('https://personality-proxy.lauri-38c.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: conversationHistory
+      })
+    });
+
+    const data2 = await response2.json();
+    if (data2.error) { removeTyping(); showError(data2.error.message); return; }
+
+    const reply = data2.content?.[0]?.text || '';
+    removeTyping();
+    addMessage('assistant', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    showOutcomeOptions();
+
+  } catch (err) {
+    removeTyping();
+    showError('Something went wrong. Try again.');
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+function resetSession() {
+  conversationHistory = [];
+  messagesEl.innerHTML = '<div class="empty-state" id="empty-state"><div class="empty-icon">◎</div><p>Click below and start typing. The coach will guide you from there.</p></div>';
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  inputEl.focus();
+}
+</script>
+</body>
+</html>
